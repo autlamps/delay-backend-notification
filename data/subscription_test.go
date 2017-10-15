@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func subSetup() (NotifyInfo, User, *sql.DB, error) {
@@ -57,8 +58,8 @@ func TestSubscriptionService_GetSubsByStopTimeID(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		ns := NewSubscription{
-			TripID:          "df688c57-987c-4705-9e22-936342eb6e3f",
-			StopTimeID:      "5cce0bca-d489-43d7-b3cb-48e0df054c8a",
+			TripID:          "bc82fb93-8b60-40e8-83ed-ce520d6ed5a2",
+			StopTimeID:      "a47cf7a1-c40f-4cee-84f5-b025e79c0935",
 			Days:            []Day{"Mon", "Tue", "Wed"},
 			NotificationIDs: []string{n.ID},
 			UserID:          u.ID.String(),
@@ -73,7 +74,7 @@ func TestSubscriptionService_GetSubsByStopTimeID(t *testing.T) {
 		subs = append(subs, s)
 	}
 
-	dbsubs, err := ss.GetSubsByStopTimeID("5cce0bca-d489-43d7-b3cb-48e0df054c8a")
+	dbsubs, err := ss.GetSubsByStopTimeID("a47cf7a1-c40f-4cee-84f5-b025e79c0935")
 
 	if err != nil {
 		t.Fatalf("Failed to get subs from db: %v", err)
@@ -99,6 +100,171 @@ func TestSubscriptionService_GetSubsByStopTimeID(t *testing.T) {
 	}
 
 	err = subCleanUp(Subscription{}, n, u, db)
+
+	if err != nil {
+		t.Fatalf("Failed to clean up: %v", err)
+	}
+}
+
+func TestSubscriptionService_RecentlyNotified(t *testing.T) {
+	n, u, db, err := subSetup()
+
+	if err != nil {
+		t.Fatalf("Failed to setup: %v", err)
+	}
+
+	ss := InitSubscriptionService(db)
+
+	ns1 := NewSubscription{
+		TripID:          "bc82fb93-8b60-40e8-83ed-ce520d6ed5a2",
+		StopTimeID:      "a47cf7a1-c40f-4cee-84f5-b025e79c0935",
+		Days:            []Day{"Mon", "Tue", "Wed"},
+		NotificationIDs: []string{n.ID},
+		UserID:          u.ID.String(),
+	}
+
+	s1, err := ss.new(ns1)
+
+	if err != nil {
+		t.Fatalf("Failed to create new sub: %v", err)
+	}
+
+	ns2 := NewSubscription{
+		TripID:          "0b8f67e8-78dc-4d77-bb57-546513e71430",
+		StopTimeID:      "d20ff7e9-34d7-4d07-b86d-6a4ceb89daa3",
+		Days:            []Day{"Mon", "Tue", "Wed"},
+		NotificationIDs: []string{n.ID},
+		UserID:          u.ID.String(),
+	}
+
+	s2, err := ss.new(ns2)
+
+	_, err = ss.db.Exec("INSERT INTO notification_event (notification_event_id, sub_id, date_created) VALUES ($1, $2, $3)",
+		"226cda79-957a-4e27-b41e-93f989b0ccf1",
+		s1.ID,
+		time.Now().Round(time.Second),
+	)
+
+	_, err = ss.db.Exec("INSERT INTO notification_event (notification_event_id, sub_id, date_created) VALUES ($1, $2, $3)",
+		"6519996b-5e82-4b3e-aeec-a7a186c6b61b",
+		s2.ID,
+		time.Now().Round(time.Second).Add(-(time.Minute * time.Duration(120))),
+	)
+
+	tests := []struct {
+		ID       string
+		Expected bool
+	}{
+		{s1.ID, true},
+		{s2.ID, false},
+	}
+
+	for _, test := range tests {
+		used, err := ss.RecentlyNotified(test.ID)
+
+		if err != nil {
+			t.Fatalf("Failed to retrieve recently notified: %v", err)
+		}
+
+		if used != test.Expected {
+			t.Fatalf("Recently notified doesn't match expected: Expected %v, got %v", used, test.Expected)
+		}
+	}
+
+	//Clean up
+	_, err = db.Exec("DELETE FROM sub_notification WHERE sub_id = $1", s1.ID)
+
+	if err != nil {
+		t.Fatalf("Failed to delete created sub notification: %v\n", err)
+	}
+
+	_, err = db.Exec("DELETE FROM notification_event WHERE sub_id = $1", s1.ID)
+
+	if err != nil {
+		t.Fatalf("Failed to delete created sub notification event: %v\n", err)
+	}
+	_, err = db.Exec("DELETE FROM subscription WHERE sub_id = $1", s1.ID)
+
+	if err != nil {
+		t.Fatalf("Failed to delete created sub: %v\n", err)
+	}
+	_, err = db.Exec("DELETE FROM sub_notification WHERE sub_id = $1", s2.ID)
+
+	if err != nil {
+		t.Fatalf("Failed to delete created sub notification: %v\n", err)
+	}
+
+	_, err = db.Exec("DELETE FROM notification_event WHERE sub_id = $1", s2.ID)
+
+	if err != nil {
+		t.Fatalf("Failed to delete created sub notification event: %v\n", err)
+	}
+
+	_, err = db.Exec("DELETE FROM subscription WHERE sub_id = $1", s2.ID)
+
+	if err != nil {
+		t.Fatalf("Failed to delete created sub: %v\n", err)
+	}
+
+	err = subCleanUp(Subscription{}, n, u, db)
+
+	if err != nil {
+		t.Fatalf("Failed to clean up: %v", err)
+	}
+}
+
+func TestSubscriptionService_Notified(t *testing.T) {
+	n, u, db, err := subSetup()
+
+	if err != nil {
+		t.Fatalf("Failed to setup: %v", err)
+	}
+
+	ss := InitSubscriptionService(db)
+
+	ns := NewSubscription{
+		TripID:          "bc82fb93-8b60-40e8-83ed-ce520d6ed5a2",
+		StopTimeID:      "a47cf7a1-c40f-4cee-84f5-b025e79c0935",
+		Days:            []Day{"Mon", "Tue", "Wed"},
+		NotificationIDs: []string{n.ID},
+		UserID:          u.ID.String(),
+	}
+
+	s, err := ss.new(ns)
+
+	if err != nil {
+		t.Fatalf("Failed to create new sub: %v", err)
+	}
+
+	err = ss.Notified(s)
+
+	if err != nil {
+		t.Fatalf("Failed to mark subscription as notified: %v", err)
+	}
+
+	row := ss.db.QueryRow("SELECT COUNT(*) from notification_event WHERE sub_id = $1", s.ID)
+
+	var count int
+
+	err = row.Scan(&count)
+
+	if err != nil {
+		t.Fatalf("Failed to get notification event count from db: %v", err)
+	}
+
+	if count != 1 {
+		t.Fatalf("Number of notification events for subscriptions unexpected. Expected 1 got %v", count)
+	}
+
+	//Clean up
+
+	_, err = db.Exec("DELETE FROM notification_event WHERE sub_id = $1", s.ID)
+
+	if err != nil {
+		t.Fatalf("Failed to delete created sub notification event: %v\n", err)
+	}
+
+	err = subCleanUp(s, n, u, db)
 
 	if err != nil {
 		t.Fatalf("Failed to clean up: %v", err)

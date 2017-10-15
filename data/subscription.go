@@ -188,3 +188,43 @@ func (ss *SubscriptionService) new(ns NewSubscription) (Subscription, error) {
 
 	return s, nil
 }
+
+// RecentlyNotified returns true if a user was recently notified by this subscription
+func (ss *SubscriptionService) RecentlyNotified(id string) (bool, error) {
+	row := ss.db.QueryRow("SELECT COUNT(*) from notification_event WHERE sub_id = $1 AND date_created > NOW() - INTERVAL '15 minutes'", id)
+
+	var count int
+
+	err := row.Scan(&count)
+
+	if err != nil {
+		return false, fmt.Errorf("subscriptions - RecentlyNotified: Failed to get if subscription notified recently: %v", err)
+	}
+
+	if count < 1 {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// Notified takes in a subscription and adds a record to indicate it has been notified
+func (ss *SubscriptionService) Notified(s Subscription) error {
+	id, err := uuid.NewRandom()
+
+	if err != nil {
+		return fmt.Errorf("subscriptions - Notified: failed to generate id: %v", err)
+	}
+
+	_, err = ss.db.Exec("INSERT INTO notification_event (notification_event_id, sub_id, date_created) VALUES ($1, $2, $3)",
+		id,
+		s.ID,
+		time.Now().Round(time.Second),
+	)
+
+	if err != nil {
+		return fmt.Errorf("subscriptions - Notified: failed to insert event: %v", err)
+	}
+
+	return nil
+}
