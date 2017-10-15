@@ -13,7 +13,7 @@ type Trip struct {
 
 // TripStore defines methods that a concrete trip service should implement
 type TripStore interface {
-	GetTripByGTFSID(id string) (Trip, error)
+	GetTripByID(id string) (Trip, error)
 }
 
 // TripService implements TripStore for psql
@@ -26,11 +26,11 @@ func TripServiceInit(db *sql.DB) *TripService {
 	return &TripService{DB: db}
 }
 
-// GetTripByGTFSID returns a trip with the given realtime trip id or an error
-func (ts *TripService) GetTripByGTFSID(id string) (Trip, error) {
+// GetTripByID returns a trip with the given realtime trip id or an error
+func (ts *TripService) GetTripByID(id string) (Trip, error) {
 	t := Trip{}
 
-	row := ts.DB.QueryRow("SELECT trip_id, route_id, service_id, gtfs_trip_id, trip_headsign FROM trips WHERE gtfs_trip_id = $1", id)
+	row := ts.DB.QueryRow("SELECT trip_id, route_id, service_id, gtfs_trip_id, trip_headsign FROM trips WHERE trip_id = $1", id)
 	err := row.Scan(&t.ID, &t.RouteID, &t.ServiceID, &t.GTFSID, &t.Headsign)
 
 	if err != nil {

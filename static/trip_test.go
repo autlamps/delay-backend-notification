@@ -7,7 +7,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func TestTripService_GetTripByGTFSID(t *testing.T) {
+func TestTripService_GetTripByID(t *testing.T) {
 	db, err := sql.Open("postgres", dburl)
 	defer db.Close()
 
@@ -25,7 +25,7 @@ func TestTripService_GetTripByGTFSID(t *testing.T) {
 		id       string
 		expected Trip
 	}{
-		{"13223097957-20170829094406_v57.13",
+		{"236a9757-6aeb-49e9-ad7c-c56d660a10ed",
 			Trip{ID: "236a9757-6aeb-49e9-ad7c-c56d660a10ed",
 				RouteID:   "3dd07748-5586-4edf-a714-f7ba4999af7e",
 				ServiceID: "b49995c1-22f4-40d6-8996-245d0f7b4f89",
@@ -35,7 +35,7 @@ func TestTripService_GetTripByGTFSID(t *testing.T) {
 
 	for _, test := range tests {
 
-		trip, err := ts.GetTripByGTFSID(test.id)
+		trip, err := ts.GetTripByID(test.id)
 
 		if err != nil {
 			t.Errorf("Failed to retrieve trip. %v", err)
