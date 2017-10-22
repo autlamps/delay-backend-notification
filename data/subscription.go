@@ -30,6 +30,8 @@ type Subscription struct {
 // SubStore is our interface defining methods for a concrete implementation
 type SubscriptionStore interface {
 	GetSubsByStopTimeID(string) ([]Subscription, error)
+	Notified(s Subscription) error
+	RecentlyNotified(id string) (bool, error)
 }
 
 // SubService is our psql implementation of SubStore
@@ -227,4 +229,28 @@ func (ss *SubscriptionService) Notified(s Subscription) error {
 	}
 
 	return nil
+}
+
+// SubscribedForToday returns whether or not the user wishes to receive notifications for this subscription today
+func (s Subscription) SubscribedForToday() bool {
+	day := Day(time.Now().Format("Mon"))
+
+	switch day {
+	case MONDAY:
+		return s.Monday == true
+	case TUESDAY:
+		return s.Tuesday == true
+	case WEDNESDAY:
+		return s.Wednesday == true
+	case THURSDAY:
+		return s.Thursday == true
+	case FRIDAY:
+		return s.Friday == true
+	case SATURDAY:
+		return s.Saturday == true
+	case SUNDAY:
+		return s.Sunday == true
+	}
+
+	return false
 }
