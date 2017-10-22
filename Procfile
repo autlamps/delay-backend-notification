@@ -1,0 +1,1 @@
+worker: delay-backend-notification
