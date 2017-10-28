@@ -97,7 +97,7 @@ func (e *Env) Start(ec <-chan bool) {
 				continue
 			}
 
-			stopTimeIndex, err := findStopTimeIndex(n.StopTimes, n.StopTimeID)
+			stopTimeIndex, err := FindStopTimeIndex(n.StopTimes, n.StopTimeID)
 
 			if err != nil {
 				log.Printf("notification - Start: notification id not in returned stoptimes: Expected %v, got %v", n.StopTimeID, n.StopTimes)
@@ -116,7 +116,11 @@ func (e *Env) Start(ec <-chan bool) {
 				go e.processStopTime(st, n)
 			}
 
-			nm.Ack(true)
+			err = nm.Ack(true)
+
+			if err != nil {
+				log.Printf("notification - Start: failed to ack notification message")
+			}
 		}
 	}
 }
@@ -225,7 +229,7 @@ func (e *Env) processSubscription(s data.Subscription, eta time.Time, st static.
 var ErrIDNotInSlice = errors.New("notification - given id not in slice")
 
 // findStopTimeIndex takes a "haystack" of stoptimes and a "needle" stoptime id and returns the index of that needle
-func findStopTimeIndex(h []static.StopTime, n string) (int, error) {
+func FindStopTimeIndex(h []static.StopTime, n string) (int, error) {
 	for i, s := range h {
 		if s.ID == n {
 			return i, nil
