@@ -113,6 +113,7 @@ func (e *Env) Start(ec <-chan bool) {
 					break
 				}
 
+				e.wg.Add(1) // Tell wait group to wait on one more goroutine
 				go e.processStopTime(st, n)
 			}
 
@@ -127,7 +128,7 @@ func (e *Env) Start(ec <-chan bool) {
 
 // processStopTime obtains all subscriptions for a stoptime id then dispatches goroutines to notify them
 func (e *Env) processStopTime(st static.StopTime, n input.Notification) {
-	e.wg.Add(1) // Tell our wait group that we're doing work and to not stop on us
+	defer e.wg.Done() // Tell our wait group that we're done
 
 	subs, err := e.Subscriptions.GetSubsByStopTimeID(st.ID)
 
@@ -144,15 +145,14 @@ func (e *Env) processStopTime(st static.StopTime, n input.Notification) {
 	eta := st.Arrival.Add(time.Second * time.Duration(n.Delay))
 
 	for _, s := range subs {
+		e.wg.Add(1) // Tell wait group to wait on one more goroutine
 		go e.processSubscription(s, eta, st, n)
 	}
-
-	e.wg.Done() // Tell our wait group that we're done
 }
 
 // processSubscription gets all notification methods of a single subscription and notifies them
 func (e *Env) processSubscription(s data.Subscription, eta time.Time, st static.StopTime, n input.Notification) {
-	e.wg.Add(1) // Tell our wait group that we're doing work and to not stop on us
+	defer e.wg.Done() // Tell our wait group that we're done
 
 	recentlyNotified, err := e.Subscriptions.RecentlyNotified(s.ID)
 
@@ -223,7 +223,6 @@ func (e *Env) processSubscription(s data.Subscription, eta time.Time, st static.
 		return
 	}
 
-	e.wg.Done() // Tell our wait group that we're done
 }
 
 var ErrIDNotInSlice = errors.New("notification - given id not in slice")
