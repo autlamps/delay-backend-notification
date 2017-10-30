@@ -1,0 +1,34 @@
+{
+	"ImportPath": "github.com/autlamps/delay-backend-notification",
+	"GoVersion": "go1.9",
+	"GodepVersion": "v79",
+	"Deps": [
+		{
+			"ImportPath": "github.com/google/uuid",
+			"Comment": "0.2-11-g7e072fc",
+			"Rev": "7e072fc3a7be179aee6d3359e46015aa8c995314"
+		},
+		{
+			"ImportPath": "github.com/lib/pq",
+			"Comment": "go1.0-cutoff-175-ge422674",
+			"Rev": "e42267488fe361b9dc034be7a6bffef5b195bceb"
+		},
+		{
+			"ImportPath": "github.com/lib/pq/oid",
+			"Comment": "go1.0-cutoff-175-ge422674",
+			"Rev": "e42267488fe361b9dc034be7a6bffef5b195bceb"
+		},
+		{
+			"ImportPath": "github.com/streadway/amqp",
+			"Rev": "2cbfe40c9341ad63ba23e53013b3ddc7989d801c"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/bcrypt",
+			"Rev": "b176d7def5d71bdd214203491f89843ed217f420"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/blowfish",
+			"Rev": "b176d7def5d71bdd214203491f89843ed217f420"
+		}
+	]
+}
