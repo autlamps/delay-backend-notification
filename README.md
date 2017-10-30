@@ -1,5 +1,4 @@
 # delay-backend-notification
-## EXPERIMENTAL BRANCH - DO NOT MEGRE WITHOUT CONSULTING @haydenwoodhead
 Backend service responsible for notifying users of lates trips
 
 ## License

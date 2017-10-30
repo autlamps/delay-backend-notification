@@ -97,29 +97,24 @@ func (e *Env) Start(ec <-chan bool) {
 				continue
 			}
 
-			if n.Cancelled {
-				e.wg.Add(1)
-				go e.processCancellation(n)
-			} else {
-				stopTimeIndex, err := FindStopTimeIndex(n.StopTimes, n.StopTimeID)
+			stopTimeIndex, err := FindStopTimeIndex(n.StopTimes, n.StopTimeID)
 
-				if err != nil {
-					log.Printf("notification - Start: notification id not in returned stoptimes: Expected %v, got %v", n.StopTimeID, n.StopTimes)
-					continue
+			if err != nil {
+				log.Printf("notification - Start: notification id not in returned stoptimes: Expected %v, got %v", n.StopTimeID, n.StopTimes)
+				continue
+			}
+
+			// Get all stoptimes from our current stoptime until the end of the trip
+			stsToNotify := n.StopTimes[stopTimeIndex:]
+
+			for i, st := range stsToNotify {
+				// We only want to look ahead and notify for stoptimes up to LOOK_AHEAD times
+				if i >= LOOK_AHEAD {
+					break
 				}
 
-				// Get all stoptimes from our current stoptime until the end of the trip
-				stsToNotify := n.StopTimes[stopTimeIndex:]
-
-				for i, st := range stsToNotify {
-					// We only want to look ahead and notify for stoptimes up to LOOK_AHEAD times
-					if i >= LOOK_AHEAD {
-						break
-					}
-
-					e.wg.Add(1) // Tell wait group to wait on one more goroutine
-					go e.processStopTime(st, n)
-				}
+				e.wg.Add(1) // Tell wait group to wait on one more goroutine
+				go e.processStopTime(st, n)
 			}
 
 			err = nm.Ack(true)
@@ -227,76 +222,7 @@ func (e *Env) processSubscription(s data.Subscription, eta time.Time, st static.
 		fmt.Printf("notification - processSubscriptions: failed to set sub as notified: %v", err)
 		return
 	}
-}
 
-// processCancellation processes a single cancellation
-func (e *Env) processCancellation(n input.Notification) {
-	defer e.wg.Done()
-
-	subs, err := e.Subscriptions.GetSubsByTripID(n.TripID)
-
-	if err != nil {
-		fmt.Printf("notification - processCancellation: failed to get subscriptions for trip id: %v. Error: %v", n.TripID, err)
-		return
-	}
-
-	for _, s := range subs {
-		e.wg.Add(1)
-		go e.processCancellationSub(s, n)
-	}
-}
-
-// processCancellationSub notify user of cancellation
-func (e *Env) processCancellationSub(s data.Subscription, n input.Notification) {
-	defer e.wg.Done()
-
-	// If user doesn't wish to receive notifications for this subscription for today then don't notify them
-	if !s.SubscribedForToday() {
-		return
-	}
-
-	title := fmt.Sprintf("Your Trip is Cancelled")
-	message := fmt.Sprintf("%v has been cancelled.", n.Route.LongName)
-
-	nData := struct {
-		StopTime  static.StopTime `json:"stop_time"`
-		Route     static.Route    `json:"route"`
-		Delay     int             `json:"delay"`
-		Eta       string          `json:"eta"`
-		Cancelled bool            `json:"cancelled"`
-	}{
-		Route:     n.Route,
-		Cancelled: true,
-	}
-
-	for _, nid := range s.NotificationIDs {
-		ntfy, err := e.NotifyInfo.Get(nid)
-
-		if err != nil {
-			log.Printf("notification - processCancellationSubs: failed to get notification method: %v", err)
-			return
-		}
-
-		switch ntfy.Type {
-		case data.PUSH:
-			err := e.Push.Send(ntfy.Value, title, message, nData)
-
-			if err != nil {
-				log.Printf("notification - processCancellationSubs: failed to call Push.Send: %v", err)
-			}
-		case data.TXT: // not implemented... clearly
-			fmt.Printf("txt notification: cancelled")
-		case data.EMAIL: // not implemented... clearly
-			fmt.Printf("email notification: cancelled")
-		}
-	}
-
-	err := e.Subscriptions.Notified(s)
-
-	if err != nil {
-		fmt.Printf("notification - processCancellationSubs: failed to set sub as notified: %v", err)
-		return
-	}
 }
 
 var ErrIDNotInSlice = errors.New("notification - given id not in slice")
