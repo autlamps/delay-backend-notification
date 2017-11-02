@@ -4,7 +4,6 @@ package input
 import "github.com/autlamps/delay-backend-notification/static"
 
 type Notification struct {
-	Cancelled  bool
 	TripID     string
 	StopTimeID string
 	Delay      int
