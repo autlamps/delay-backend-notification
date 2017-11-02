@@ -22,7 +22,7 @@ func init() {
 	flag.Parse()
 
 	if firebaseKey == "" {
-		os.Getenv("FIREBASE_KEY")
+		firebaseKey = os.Getenv("FIREBASE_KEY")
 	}
 
 	if dburl == "" {
